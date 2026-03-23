@@ -37,7 +37,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="font-body antialiased dark">
+      <body className="font-body antialiased dark" suppressHydrationWarning>
         {children}
         <Toaster />
       </body>
