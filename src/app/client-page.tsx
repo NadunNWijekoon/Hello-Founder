@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings } from 'lucide-react';
 
 import { detectObjects } from '@/ai/flows/object-detection-flow';
+import { detectFaces } from '@/ai/flows/face-detection-flow';
+import { recognizeTextOCR } from '@/ai/flows/ocr-recognition-flow';
 import { Detections } from '@/types';
 import { useSpeech } from '@/hooks/use-speech';
 import { SettingsProvider, useSettings } from '@/contexts/settings-context';
@@ -46,16 +48,35 @@ const MainApp = () => {
   const handleFrame = useCallback(async (dataUri: string) => {
     fpsRef.current.frameCount++;
     if (isProcessing) return;
+    if (!state.showObjects && !state.showFaces && !state.showText) {
+        setDetections({ objects: [], faces: [], texts: [] });
+        return;
+    }
 
     setIsProcessing(true);
     try {
-      // In a real scenario, you might run these in parallel
-      const objectResult = await detectObjects({ photoDataUri: dataUri });
+      const objectPromise = state.showObjects 
+        ? detectObjects({ photoDataUri: dataUri }) 
+        : Promise.resolve({ detections: [] });
+
+      const facePromise = state.showFaces 
+        ? detectFaces({ photoDataUri: dataUri }) 
+        : Promise.resolve({ facesDetected: false, boundingBoxes: [] });
+
+      const textPromise = state.showText 
+        ? recognizeTextOCR({ imageDataUri: dataUri }) 
+        : Promise.resolve({ recognizedTexts: [] });
+
+      const [objectResult, faceResult, textResult] = await Promise.all([
+        objectPromise,
+        facePromise,
+        textPromise,
+      ]);
       
       const newDetections: Detections = {
         objects: objectResult.detections || [],
-        faces: [], // Placeholder for face detection
-        texts: []  // Placeholder for OCR
+        faces: faceResult.boundingBoxes || [],
+        texts: textResult.recognizedTexts || []
       };
 
       setDetections(newDetections);
@@ -83,7 +104,7 @@ const MainApp = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, state.enableVoice, state.confidenceThreshold, speak, toast]);
+  }, [isProcessing, state.showObjects, state.showFaces, state.showText, state.enableVoice, state.confidenceThreshold, speak, toast]);
 
   return (
     <main className="w-full h-screen overflow-hidden bg-black relative">

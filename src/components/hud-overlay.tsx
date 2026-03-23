@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Detections, DetectedObject } from '@/types';
+import { Detections, DetectedObject, FaceBoundingBox } from '@/types';
 import { useSettings } from '@/contexts/settings-context';
 import { cn } from '@/lib/utils';
-import { Scan, Cpu, Bot } from 'lucide-react';
+import { Scan, Cpu, Bot, MessageSquareText } from 'lucide-react';
 
 interface BoundingBoxProps {
   object: DetectedObject;
@@ -47,6 +47,45 @@ function BoundingBox({ object, videoRect }: BoundingBoxProps) {
   );
 }
 
+interface FaceBoxProps {
+    box: FaceBoundingBox;
+    videoRect: DOMRect | null;
+}
+
+function FaceBox({ box, videoRect }: FaceBoxProps) {
+    if (!videoRect) return null;
+
+    const { x, y, width, height } = box;
+
+    const scaleX = videoRect.width;
+    const scaleY = videoRect.height;
+
+    const left = videoRect.left + (1 - (x + width)) * scaleX;
+    const top = videoRect.top + y * scaleY;
+    const boxWidth = width * scaleX;
+    const boxHeight = height * scaleY;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 1.2 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.3 }}
+            className="absolute border-2 border-primary rounded-full"
+            style={{
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${boxWidth}px`,
+                height: `${boxHeight}px`,
+            }}
+        >
+            <div className="absolute -top-6 left-0 bg-primary/80 text-primary-foreground px-2 py-0.5 text-xs font-bold rounded-t-md">
+                Face {box.confidence !== undefined && `(${(box.confidence * 100).toFixed(0)}%)`}
+            </div>
+        </motion.div>
+    );
+}
+
 interface HudOverlayProps {
   detections: Detections;
   isProcessing: boolean;
@@ -60,6 +99,12 @@ export function HudOverlay({ detections, isProcessing, videoRect, fps }: HudOver
   const visibleObjects = state.showObjects
     ? detections.objects.filter(obj => obj.confidence > state.confidenceThreshold)
     : [];
+    
+  const visibleFaces = state.showFaces 
+    ? detections.faces.filter(face => (face.confidence ?? 1.0) * 100 > state.confidenceThreshold)
+    : [];
+
+  const visibleTexts = state.showText ? detections.texts : [];
     
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -80,9 +125,30 @@ export function HudOverlay({ detections, isProcessing, videoRect, fps }: HudOver
       {/* Detections */}
       <AnimatePresence>
         {visibleObjects.map((obj, i) => (
-          <BoundingBox key={`${obj.label}-${i}`} object={obj} videoRect={videoRect} />
+          <BoundingBox key={`obj-${obj.label}-${i}`} object={obj} videoRect={videoRect} />
+        ))}
+        {visibleFaces.map((face, i) => (
+            <FaceBox key={`face-${i}`} box={face} videoRect={videoRect} />
         ))}
       </AnimatePresence>
+
+      {/* Recognized Text */}
+      {visibleTexts.length > 0 && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 flex flex-wrap justify-center items-center gap-2">
+            {visibleTexts.map((text, i) => (
+                <motion.div
+                    key={`text-${i}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.05 }}
+                    className="glassmorphism p-2 px-3 rounded-md text-primary-foreground text-sm font-semibold"
+                >
+                    {text}
+                </motion.div>
+            ))}
+        </div>
+      )}
+
 
       {/* Status Panel */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glassmorphism p-2 rounded-lg flex items-center space-x-4 text-xs font-mono">
@@ -98,8 +164,15 @@ export function HudOverlay({ detections, isProcessing, videoRect, fps }: HudOver
         <div className="w-px h-4 bg-border" />
         <div className="flex items-center space-x-2 text-primary-foreground/70">
             <Bot className="w-4 h-4" />
-            <span>OBJ: {visibleObjects.length}</span>
+            <span>OBJ: {visibleObjects.length + visibleFaces.length}</span>
         </div>
+        {visibleTexts.length > 0 && <>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center space-x-2 text-primary-foreground/70">
+                <MessageSquareText className="w-4 h-4" />
+                <span>TXT: {visibleTexts.length}</span>
+            </div>
+        </>}
       </div>
     </div>
   );

@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'ocrRecognitionPrompt',
   input: { schema: OCRRecognitionInputSchema },
   output: { schema: OCRRecognitionOutputSchema },
-  prompt: `You are an expert OCR system. Your task is to accurately extract all distinct readable text from the provided image.\n\nStrictly respond with a JSON object matching the following schema:\n\n```json\n{{{_output_schema}}}\n```\n\nHere is the image to process:\n{{media url=imageDataUri}}`
+  prompt: `You are an expert OCR system. Your task is to accurately extract all distinct readable text from the provided image.\n\nStrictly respond with a JSON object matching the following schema:\n{{{_output_schema}}}\n\nHere is the image to process:\n{{media url=imageDataUri}}`
 });
 
 const ocrRecognitionFlow = ai.defineFlow(

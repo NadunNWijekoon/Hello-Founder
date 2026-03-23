@@ -11,8 +11,16 @@ export type DetectedObject = {
   boundingBox?: BoundingBox;
 };
 
+export type FaceBoundingBox = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    confidence?: number;
+};
+
 export type Detections = {
   objects: DetectedObject[];
-  faces: BoundingBox[];
+  faces: FaceBoundingBox[];
   texts: string[];
 };
